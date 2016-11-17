@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="pinterest" content="nopin">
+<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+<meta name="generator" content="Hugo 0.17" />
+
+
+
+<link rel="canonical" href="https://trickbooter.github.io/post/2016-11-12-spark-gradle/">
+
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link href="https://trickbooter.github.io/css/styles.css" rel="stylesheet">
+    <script src="//code.jquery.com/jquery-3.1.1.min.js"></script>
+    <title>A Spark Gradle Project - Outback Coder (a working title)</title>
+    
+<meta name="description" content="An Empty Spark Project with Gradle Goodies When I started working with Spark, I was new to many technologies, and one of the most time consuming aspects for me was putting together a set of build tools.Objectives Over the course of this project, I found myself wanting a handful of features from the build. Build the code Run the tests Run Spark integration tests Bundle my project into an uberjar for easy use with Spark Build a tar file that contains my jar and other files I might want (such as configuration templates) Add the git commit hash to the jar manifest  Using the code Grab the code from Github.">
+
+<meta property="og:title" content="A Spark Gradle Project - Outback Coder (a working title)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trickbooter.github.io/post/2016-11-12-spark-gradle/">
+<meta property="og:image" content="https://trickbooter.github.io/images/default.png">
+<meta property="og:site_name" content="Outback Coder (a working title)">
+<meta property="og:description" content="An Empty Spark Project with Gradle Goodies When I started working with Spark, I was new to many technologies, and one of the most time consuming aspects for me was putting together a set of build tools.Objectives Over the course of this project, I found myself wanting a handful of features from the build. Build the code Run the tests Run Spark integration tests Bundle my project into an uberjar for easy use with Spark Build a tar file that contains my jar and other files I might want (such as configuration templates) Add the git commit hash to the jar manifest  Using the code Grab the code from Github.">
+<meta property="og:locale" content="ja_JP">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="Outback Coder (a working title)">
+<meta name="twitter:url" content="https://trickbooter.github.io/post/2016-11-12-spark-gradle/">
+<meta name="twitter:title" content="A Spark Gradle Project - Outback Coder (a working title)">
+<meta name="twitter:description" content="An Empty Spark Project with Gradle Goodies When I started working with Spark, I was new to many technologies, and one of the most time consuming aspects for me was putting together a set of build tools.Objectives Over the course of this project, I found myself wanting a handful of features from the build. Build the code Run the tests Run Spark integration tests Bundle my project into an uberjar for easy use with Spark Build a tar file that contains my jar and other files I might want (such as configuration templates) Add the git commit hash to the jar manifest  Using the code Grab the code from Github.">
+<meta name="twitter:image" content="https://trickbooter.github.io/images/default.png">
+
+
+<script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id":"https:\/\/trickbooter.github.io\/"
+    },
+    "headline": "A Spark Gradle Project - Outback Coder (a working title)",
+    "image": {
+      "@type": "ImageObject",
+      "url": "https:\/\/trickbooter.github.io\/images\/default.png",
+      "height": 800,
+      "width": 800
+    },
+    "datePublished": "2016-11-12T15:40:31JST",
+    "dateModified": "2016-11-12T15:40:31JST",
+    "author": {
+      "@type": "Person",
+      "name": "Outback Coder (a working title)"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Outback Coder (a working title)",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https:\/\/trickbooter.github.io\/images/logo.png",
+        "width": 600,
+        "height": 60
+      }
+    },
+    "description": "An Empty Spark Project with Gradle Goodies When I started working with Spark, I was new to many technologies, and one of the most time consuming aspects for me was putting together a set of build tools.\nObjectives Over the course of this project, I found myself wanting a handful of features from the build.\n Build the code Run the tests Run Spark integration tests Bundle my project into an uberjar for easy use with Spark Build a tar file that contains my jar and other files I might want (such as configuration templates) Add the git commit hash to the jar manifest  Using the code Grab the code from Github."
+  }
+</script>
+
+
+  </head>
+
+  <body>
+    
+    
+    
+
+    <header class="l-header">
+      <nav class="navbar navbar-default">
+        <div class="container">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="https://trickbooter.github.io/">Outback Coder (a working title)</a>
+
+            
+              <a class="navbar-brand" href="https://github.com/trickbooter">
+                <span class="icon">
+                  <i class="fa fa-github"></i>
+                </span>
+              </a>
+            
+              <a class="navbar-brand" href="https://au.linkedin.com/in/trickbooter">
+                <span class="icon">
+                  <i class="fa fa-linkedin"></i>
+                </span>
+              </a>
+            
+              <a class="navbar-brand" href="/index.xml">
+                <span class="icon">
+                  <i class="fa fa-rss"></i>
+                </span>
+              </a>
+            
+          </div>
+
+          
+
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="container">
+        
+<div class="row">
+  <div class="col-md-8">
+
+    <nav class="p-crumb">
+      <ol class="breadcrumb">
+        <li><a href="https://trickbooter.github.io/"><i class="fa fa-home" aria-hidden="true"></i></a></li>
+        
+        <li itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb"><a href="https://trickbooter.github.io/post/" itemprop="url"><span itemprop="title">post</span></a></li>
+        
+        <li class="active">A Spark Gradle Project</li>
+      </ol>
+    </nav>
+
+    <article class="single">
+  <header>
+    <ul class="p-facts">
+      <li><i class="fa fa-calendar" aria-hidden="true"></i><time datetime="2016-11-12T15:40:31JST">Nov 12, 2016</time></li>
+      <li><i class="fa fa-bookmark" aria-hidden="true"></i><a href="https://trickbooter.github.io/post/">post</a></li>
+      
+    </ul>
+
+    <h1 class="title">A Spark Gradle Project</h1>
+  </header>
+
+  
+
+  <div class="article-body">
+
+<h2 id="an-empty-spark-project-with-gradle-goodies">An Empty Spark Project with Gradle Goodies</h2>
+
+<p>When I started working with Spark, I was new to many technologies, and one of the most time consuming aspects for me was putting together a set of build tools.</p>
+
+<h3 id="objectives">Objectives</h3>
+
+<p>Over the course of this project, I found myself wanting a handful of features from the build.</p>
+
+<ul>
+<li>Build the code</li>
+<li>Run the tests</li>
+<li>Run Spark integration tests</li>
+<li>Bundle my project into an uberjar for easy use with Spark</li>
+<li>Build a tar file that contains my jar and other files I might want (such as configuration templates)</li>
+<li>Add the git commit hash to the jar manifest</li>
+</ul>
+
+<h3 id="using-the-code">Using the code</h3>
+
+<p>Grab the code from <a href="https://github.com/trickbooter/spark-gradle">Github</a>. Although I have included the Gradle idea and eclipse plugins, I have only tested this on my usual Development tool of <a href="https://www.jetbrains.com/idea/">IntelliJ</a>.</p>
+
+<ol>
+<li>Open IntelliJ</li>
+<li>Select Import Project</li>
+<li>Select the cloned repo</li>
+<li>Select Gradle as the external model</li>
+<li>Select &lsquo;Auto-Import&rsquo;, &lsquo;Create separate module per source set&rsquo;, &lsquo;Use gradle wrapper task configuration&rsquo;</li>
+<li>Finish</li>
+</ol>
+
+<h3 id="layout">Layout</h3>
+
+<p><em>settings.gradle</em></p>
+
+<p>Contains the project name, which forms part of the jar name and artifact name.</p>
+
+<p><em>build.gradle</em></p>
+
+<p>Where the main Gradle action happens.</p>
+
+<p>The <a href="https://github.com/johnrengelman/shadow">shadow</a> plugin is used create an uber jar. It is the Gradle version of Maven&rsquo;s <a href="https://maven.apache.org/plugins/maven-shade-plugin/">shade</a> plugin.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>plugins <span style="color: #666666">{</span>
+  id <span style="color: #4070a0">&#39;com.github.johnrengelman.shadow&#39;</span> version <span style="color: #4070a0">&#39;1.2.3&#39;</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>I split out aspects of Gradle functions into their own scripts for neatness. To access them we import them in build.gradle</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>apply <span style="color: #002070; font-weight: bold">from:</span> <span style="color: #4070a0">&quot;$rootDir/gradle/dependencies.gradle&quot;</span>
+apply <span style="color: #002070; font-weight: bold">from:</span> <span style="color: #4070a0">&quot;$rootDir/gradle/artifacts.gradle&quot;</span>
+apply <span style="color: #002070; font-weight: bold">from:</span> <span style="color: #4070a0">&quot;$rootDir/gradle/tests.gradle&quot;</span>
+</pre></div>
+
+<p><em>gradle/dependencies.gradle</em></p>
+
+<p>A convenient location to maintain our dependencies. Keeping things in arrays makes the nice and easy to use.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>versions <span style="color: #666666">+=</span> <span style="color: #666666">[</span>
+        scala     <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;2.11&quot;</span><span style="color: #666666">,</span>
+        <span style="color: #002070; font-weight: bold">scalaPatch:</span> <span style="color: #4070a0">&quot;1&quot;</span><span style="color: #666666">,</span>
+        spark     <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;2.0.1&quot;</span>
+<span style="color: #666666">]</span>
+
+libs <span style="color: #666666">+=</span> <span style="color: #666666">[</span>
+        commonsIO        <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;commons-io:commons-io:2.4&quot;</span><span style="color: #666666">,</span>
+        commonsLang      <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;org.apache.commons:commons-lang3:3.4&quot;</span><span style="color: #666666">,</span>
+        guava            <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;com.google.guava:guava:18.0&quot;</span>
+        jodaTime         <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;joda-time:joda-time:2.4&quot;</span><span style="color: #666666">,</span>
+        scala            <span style="color: #666666">:</span> <span style="color: #4070a0">&quot;org.scala-lang:scala-library:$versions.scala.$versions.scalaPatch&quot;</span>
+
+dependencies <span style="color: #666666">{</span>
+    compile libs<span style="color: #666666">.</span><span style="color: #4070a0">commonsIO</span><span style="color: #666666">,</span>
+            libs<span style="color: #666666">.</span><span style="color: #4070a0">commonsLang</span><span style="color: #666666">,</span>
+            libs<span style="color: #666666">.</span><span style="color: #4070a0">guava</span><span style="color: #666666">,</span>
+            libs<span style="color: #666666">.</span><span style="color: #4070a0">jodaTime</span><span style="color: #666666">,</span>
+            libs<span style="color: #666666">.</span><span style="color: #4070a0">scala</span>
+</pre></div>
+
+<p>Using Gradle 2.14 also lets us take advantage of the compileOnly feature, which allows dependencies to be used during compile, but are then expected to be provided whilst the code is running. This is the perfect place to put our spark libraries. Until recently Gradle didn&rsquo;t have an equivalent of Maven&rsquo;s providedCompile. For those of us building uber-jar&rsquo;s, that meant we had to jump through hoops to exclude dependencies from the jar. The Spark dependencies are pretty huge, and entirely unnecessary for runtime since the Spark runtime provides them. Thankfully since <a href="https://gradle.org/blog/compile-only-dependencies/">Gradle 2.12</a>, we can now use compileOnly. This makes the dependencies available during coding and buidling, but excludes them from the final artifact dependencies.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>compileOnly libs<span style="color: #666666">.</span><span style="color: #4070a0">spark</span><span style="color: #666666">,</span>
+        libs<span style="color: #666666">.</span><span style="color: #4070a0">sparkSql</span><span style="color: #666666">,</span>
+        libs<span style="color: #666666">.</span><span style="color: #4070a0">sparkStreaming</span>
+</pre></div>
+
+<p><em>gradle/tests.gradle</em></p>
+
+<p>Defines our test tasks. All I have done here is customised the default Gradle test task to ensure Gradle doesn&rsquo;t swallow JUnit&rsquo;s standard out and standard error.</p>
+
+<p>I define maxParallelForks as 1 to prevent JUnit from running parallel tests. We need fine control over creation and destruction of Spark Sessions.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>test <span style="color: #666666">{</span>
+    maxParallelForks <span style="color: #666666">=</span> <span style="color: #40a070">1</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p><em>gradle/artifacts.gradle</em></p>
+
+<p>Defines our packaging tasks.</p>
+
+<p>The shadowJar task is our uber-jaring task. The classifier sets the jar filename suffix. When I worked on a Spark Cassandra project I had to relocate com.google within the uber-jar to avoid a conflict with the <a href="https://github.com/datastax/spark-cassandra-connector">Spark Cassandra Connector</a>. The issue is documented <a href="http://stackoverflow.com/questions/34209329/guava-version-while-using-spark-shell">here</a>. I have left the code here for posterity, but isn&rsquo;t necessary if you aren&rsquo;t using the connector. I was also using various JDBC connectors, merging these into a single jar requires use to merge the manifest service files. For me it was sufficient to call mergeServiceFiles(), but you might need to manually relocated or write service files in your case.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>shadowJar <span style="color: #666666">{</span>
+    classifier <span style="color: #4070a0">&quot;shadow&quot;</span>
+    relocate <span style="color: #4070a0">&#39;com.google&#39;</span><span style="color: #666666">,</span> <span style="color: #4070a0">&#39;shadow.com.google&#39;</span>
+    mergeServiceFiles<span style="color: #666666">()</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>This code I grabbed from this <a href="https://gist.github.com/JonasGroeger/7620911">gist</a> with a few modifications. It grabs the commit hash code from the git repo (I assuming you are using git). We can use this to write into our jar manifest later.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #902000">def</span> <span style="color: #06287e">getCheckedOutGitCommitHash</span><span style="color: #666666">()</span> <span style="color: #666666">{</span>
+    <span style="color: #902000">def</span> gitFolder <span style="color: #666666">=</span> <span style="color: #4070a0">&quot;$projectDir/.git/&quot;</span>
+    <span style="color: #60a0b0; font-style: italic">/*</span>
+<span style="color: #60a0b0; font-style: italic">     * &#39;.git/HEAD&#39; contains either</span>
+<span style="color: #60a0b0; font-style: italic">     *      in case of detached head: the currently checked out commit hash</span>
+<span style="color: #60a0b0; font-style: italic">     *      otherwise: a reference to a file containing the current commit hash</span>
+<span style="color: #60a0b0; font-style: italic">     */</span>
+    <span style="color: #902000">def</span> head <span style="color: #666666">=</span> <span style="color: #007020; font-weight: bold">new</span> File<span style="color: #666666">(</span>gitFolder <span style="color: #666666">+</span> <span style="color: #4070a0">&quot;HEAD&quot;</span><span style="color: #666666">).</span><span style="color: #4070a0">text</span><span style="color: #666666">.</span><span style="color: #4070a0">split</span><span style="color: #666666">(</span><span style="color: #4070a0">&quot;:&quot;</span><span style="color: #666666">)</span> <span style="color: #60a0b0; font-style: italic">// .git/HEAD</span>
+    <span style="color: #902000">def</span> isCommit <span style="color: #666666">=</span> head<span style="color: #666666">.</span><span style="color: #4070a0">length</span> <span style="color: #666666">==</span> <span style="color: #40a070">1</span> <span style="color: #60a0b0; font-style: italic">// e5a7c79edabbf7dd39888442df081b1c9d8e88fd</span>
+
+    <span style="color: #007020; font-weight: bold">if</span> <span style="color: #666666">(</span>isCommit<span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">return</span> head<span style="color: #666666">[</span><span style="color: #40a070">0</span><span style="color: #666666">].</span><span style="color: #4070a0">trim</span><span style="color: #666666">()</span>
+
+    <span style="color: #902000">def</span> refHead <span style="color: #666666">=</span> <span style="color: #007020; font-weight: bold">new</span> File<span style="color: #666666">(</span>gitFolder <span style="color: #666666">+</span> head<span style="color: #666666">[</span><span style="color: #40a070">1</span><span style="color: #666666">].</span><span style="color: #4070a0">trim</span><span style="color: #666666">())</span> <span style="color: #60a0b0; font-style: italic">// .git/refs/heads/master</span>
+    refHead<span style="color: #666666">.</span><span style="color: #4070a0">text</span><span style="color: #666666">.</span><span style="color: #4070a0">trim</span><span style="color: #666666">()</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>We can now build the jar manifest and incorporate that git has code we jsut grabbed. This is awesome if you have to integrate or test on a shared platform and need to know exactly what jar is running.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>jar <span style="color: #666666">{</span>
+    manifest <span style="color: #666666">{</span>
+        attributes<span style="color: #666666">(</span>
+                <span style="color: #4070a0">&quot;Implementation-Title&quot;</span><span style="color: #666666">:</span> <span style="color: #4070a0">&quot;Spark-Gradle&quot;</span><span style="color: #666666">,</span>
+                <span style="color: #4070a0">&quot;Implementation-Descritpion&quot;</span><span style="color: #666666">:</span> <span style="color: #4070a0">&quot;A Spark template project built using Gradle&quot;</span><span style="color: #666666">,</span>
+                <span style="color: #4070a0">&quot;Implementation-Version&quot;</span><span style="color: #666666">:</span> getCheckedOutGitCommitHash<span style="color: #666666">(),</span>
+                <span style="color: #4070a0">&quot;Build-Timestamp&quot;</span><span style="color: #666666">:</span> <span style="color: #666666">(</span><span style="color: #902000">int</span><span style="color: #666666">)</span> <span style="color: #666666">(</span><span style="color: #007020; font-weight: bold">new</span> Date<span style="color: #666666">().</span><span style="color: #4070a0">getTime</span><span style="color: #666666">()</span> <span style="color: #666666">/</span> <span style="color: #40a070">1000</span><span style="color: #666666">)</span>
+        <span style="color: #666666">)</span>
+    <span style="color: #666666">}</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>Lastly we have the tar task that grabs whatever files we want, in addition to the uber jar, and bundles them into a tar for easy distribution.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span>task <span style="color: #06287e">distribution</span><span style="color: #666666">(</span><span style="color: #002070; font-weight: bold">type:</span> Tar<span style="color: #666666">,</span> <span style="color: #002070; font-weight: bold">dependsOn:</span> shadowJar<span style="color: #666666">){</span>
+    from shadowJar<span style="color: #666666">.</span><span style="color: #4070a0">outputs</span><span style="color: #666666">.</span><span style="color: #4070a0">files</span>
+    <span style="color: #06287e">from</span><span style="color: #666666">(</span><span style="color: #4070a0">&#39;src/conf&#39;</span><span style="color: #666666">)</span> <span style="color: #666666">{</span> into<span style="color: #666666">(</span><span style="color: #4070a0">&#39;conf&#39;</span><span style="color: #666666">)</span> <span style="color: #666666">}</span>
+<span style="color: #666666">}</span>
+</pre></div>
+</div>
+
+  <footer class="article-footer">
+    
+    
+    
+    <section class="bordered">
+      <header>
+        <div class="panel-title">CATEGORIES</div>
+      </header>
+      <div>
+        <ul class="p-terms">
+          
+          <li><a href="https://trickbooter.github.io/categories/development/">Development</a></li>
+          
+          <li><a href="https://trickbooter.github.io/categories/spark/">Spark</a></li>
+          
+        </ul>
+      </div>
+    </section>
+    
+    
+    
+    <section class="bordered">
+      <header>
+        <div class="panel-title">TAGS</div>
+      </header>
+      <div>
+        <ul class="p-terms">
+          
+          <li><a href="https://trickbooter.github.io/tags/development/">Development</a></li>
+          
+          <li><a href="https://trickbooter.github.io/tags/spark/">Spark</a></li>
+          
+          <li><a href="https://trickbooter.github.io/tags/gradle/">Gradle</a></li>
+          
+        </ul>
+      </div>
+    </section>
+    
+    
+  </footer>
+
+</article>
+
+
+    
+  </div>
+
+  <div class="col-md-4">
+    
+<aside class="l-sidebar">
+
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">LATESTS</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/post/2016-11-17-gradle-scalatest/" class="list-group-item">Ignoring Scalatest Tests By Tag When Using JUnit Runner and Gradle</a>
+      
+      <a href="https://trickbooter.github.io/post/2016-11-12-spark-gradle/" class="list-group-item">A Spark Gradle Project</a>
+      
+    </div>
+  </section>
+
+  
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">CATEGORY</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/categories/development" class="list-group-item">development</a>
+      
+      <a href="https://trickbooter.github.io/categories/spark" class="list-group-item">spark</a>
+      
+      <a href="https://trickbooter.github.io/categories/tooling" class="list-group-item">tooling</a>
+      
+    </div>
+  </section>
+  
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">TAG</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/tags/development" class="list-group-item">development</a>
+      
+      <a href="https://trickbooter.github.io/tags/gradle" class="list-group-item">gradle</a>
+      
+      <a href="https://trickbooter.github.io/tags/spark" class="list-group-item">spark</a>
+      
+    </div>
+  </section>
+  
+
+</aside>
+
+
+  </div>
+</div>
+
+      </div>
+    </main>
+
+    <footer class="l-footer">
+      <div class="container">
+        <p><span class="h-logo">&copy; Outback Coder (a working title)</span></p>
+        <aside>
+          <p>Powered by <a href="https://gohugo.io/">Hugo</a>.</p>
+          <p><a href="https://github.com/dim0627/hugo_theme_beg">Beg</a> designed by <a href="http://yet.unresolved.xyz/">Daisuke Tsuji</a>.</p>
+        </aside>
+      </div>
+    </footer>
+  </body>
+</html>
