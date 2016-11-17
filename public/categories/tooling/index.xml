@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Outback Coder (a working title)</title>
+    <link>https://trickbooter.github.io/categories/tooling/index.xml</link>
+    <description>Recent content on Outback Coder (a working title)</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <atom:link href="https://trickbooter.github.io/categories/tooling/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Ignoring Scalatest Tests By Tag When Using JUnit Runner and Gradle</title>
+      <link>https://trickbooter.github.io/post/2016-11-17-gradle-scalatest/</link>
+      <pubDate>Thu, 17 Nov 2016 14:00:31 +1100</pubDate>
+      
+      <guid>https://trickbooter.github.io/post/2016-11-17-gradle-scalatest/</guid>
+      <description>
+
+&lt;p&gt;I use &lt;a href=&#34;https://github.com/drone/drone&#34;&gt;Drone&lt;/a&gt; for CI for some projects, a fully awesome Docker based build pipeline tool. On one of my projects that uses &lt;a href=&#34;https://gradle.org/&#34;&gt;Gradle&lt;/a&gt; and &lt;a href=&#34;http://www.scalatest.org/&#34;&gt;scalatest&lt;/a&gt; I was experience a hang at the end of the build &amp;amp; test phase, prevent further Drone tasks from running. After a lengthly chunk of work and diagnosis I found this &lt;a href=&#34;https://github.com/drone/drone/issues/1817&#34;&gt;issue&lt;/a&gt; to &lt;a href=&#34;https://www.docker.com/&#34;&gt;Docker&lt;/a&gt; v1.12, which matched our Docker version on Drone. However, I learnt some things along the way which I&amp;rsquo;ll blog about piece by piece, and first up is ignoring scalatest tests by tag when using JUnit Runner.&lt;/p&gt;
+
+&lt;h3 id=&#34;how-did-i-get-here&#34;&gt;How Did I Get Here&lt;/h3&gt;
+
+&lt;p&gt;Before finding this &lt;a href=&#34;https://github.com/drone/drone/issues/1817&#34;&gt;issue&lt;/a&gt;, I had determined that it was something to do with the test cleanup. Tests included &lt;a href=&#34;http://spark.apache.org/&#34;&gt;Spark&lt;/a&gt; integration tests, and I suspected that the hang had something to do with Docker&amp;rsquo;s handling of standard out / standard error.&lt;/p&gt;
+
+&lt;p&gt;I was using a pretty typical scalatest setup that included a tag for identifying tasks with database dependencies:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.scalatest._&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.junit.runner.RunWith&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.scalatest.junit.JUnitRunner&lt;/span&gt;
+
+&lt;span style=&#34;color: #555555; font-weight: bold&#34;&gt;@RunWith&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;classOf&lt;span style=&#34;color: #666666&#34;&gt;[&lt;/span&gt;&lt;span style=&#34;color: #902000&#34;&gt;JUnitRunner&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;])&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;abstract&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;UnitSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;extends&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;FlatSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Matchers&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;OptionValues&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Inside&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Inspectors&lt;/span&gt;
+
+&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;/* Manage before/after events to manage db setup and teardown */&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;trait&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;ResetDB&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;extends&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;BeforeAndAfterEach&lt;/span&gt;  &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+  &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;this:&lt;/span&gt; &lt;span style=&#34;color: #902000&#34;&gt;Suite&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;=&amp;gt;&lt;/span&gt;
+
+  &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;override&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;def&lt;/span&gt; beforeEach&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    setupDB
+    &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;super&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;beforeEach&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// To be stackable, must call super.beforeEach&lt;/span&gt;
+  &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+  &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;override&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;def&lt;/span&gt; afterEach&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;try&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+      teardownDB
+    &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;finally&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+      &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;super&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;afterEach&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// To be stackable, must call super.afterEach&lt;/span&gt;
+    &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+  &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+  &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;def&lt;/span&gt; setupDB&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// code to run a bunch of scripts against a db&lt;/span&gt;
+  &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+  &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;def&lt;/span&gt; teardownDB&lt;span style=&#34;color: #666666&#34;&gt;()&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    code to destroy the db
+  &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;/* Tag tasks that require external resources */&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;object&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;IntegrationTest&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;extends&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Tag&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;integration&amp;quot;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt;
+
+&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;/* Basic test class that forces the db setup to run to ensure basic scripting is ok */&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;BuildDBSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;extends&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;UnitSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;ResetDB&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+
+  &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;DB Scripts&amp;quot;&lt;/span&gt;  should &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;Deploy Without Error&amp;quot;&lt;/span&gt; taggedAs &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;IntegrationTest&lt;/span&gt; in &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    assert&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;true&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt;
+  &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;and I called my Scala tests as follows:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;plugins &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    id &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;java&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+task &lt;span style=&#34;color: #06287e&#34;&gt;scalaTest&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;dependsOn:&lt;/span&gt; testClasses&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;type:&lt;/span&gt; JavaExec&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;group:&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;verification&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    main &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.scalatest.tools.Runner&amp;#39;&lt;/span&gt;
+    classpath &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; sourceSets&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;test&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;runtimeClasspath&lt;/span&gt;
+    args &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;[&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;-R&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;build/classes/test&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;-o&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;-l&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;integration&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;]&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// exclude integration tests&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+task &lt;span style=&#34;color: #06287e&#34;&gt;scalaIntegrationTest&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;dependsOn:&lt;/span&gt; testClasses&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;type:&lt;/span&gt; JavaExec&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;group:&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;verification&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    main &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.scalatest.tools.Runner&amp;#39;&lt;/span&gt;
+    classpath &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; sourceSets&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;test&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;runtimeClasspath&lt;/span&gt;
+    args &lt;span style=&#34;color: #666666&#34;&gt;=&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;[&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;-R&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;build/classes/test&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;-o&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;]&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;I found that making the simple switch to JUnit Runner which could be called natively by Gradle resolved the Drone hang issue. Converting from scalatest Runner to JUnit running is dead easy.&lt;/p&gt;
+
+&lt;p&gt;Firstly, add the JUnit library to our Gradle dependencies:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// In Gradle, we need to add JUnit as a dependency to testCompile&lt;/span&gt;
+testCompile &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;junit:junit:4.12&amp;quot;&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Now tag your test classes (or base class) with the RunWith attribute:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// In Scala, to identify our tests as tests to be run with JUnit Runner, I tagged m base class with the RunWith attribute&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.scalatest._&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.junit.runner.RunWith&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;import&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;org.scalatest.junit.JUnitRunner&lt;/span&gt;
+
+&lt;span style=&#34;color: #555555; font-weight: bold&#34;&gt;@RunWith&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;classOf&lt;span style=&#34;color: #666666&#34;&gt;[&lt;/span&gt;&lt;span style=&#34;color: #902000&#34;&gt;JUnitRunner&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;])&lt;/span&gt;
+&lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;abstract&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;UnitSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;extends&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;FlatSpec&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Matchers&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;OptionValues&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Inside&lt;/span&gt; &lt;span style=&#34;color: #007020; font-weight: bold&#34;&gt;with&lt;/span&gt; &lt;span style=&#34;color: #0e84b5; font-weight: bold&#34;&gt;Inspectors&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Automagically, running Gradle test now calls the default test task, which runs our JUnit tests&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;gradle &lt;span style=&#34;color: #007020&#34;&gt;test&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3 id=&#34;ok-so-what-did-we-lose&#34;&gt;Ok, so what did we lose?&lt;/h3&gt;
+
+&lt;p&gt;Well JUnit Runner doesn&amp;rsquo;t have a native way of interpretting scalatest tags, so in solving my Drone hang problem, I&amp;rsquo;d also made it difficult to separate unit tests from integration tests. That is, until I found this useful &lt;a href=&#34;https://github.com/maiflai/gradle-scalatest&#34;&gt;plugin&lt;/a&gt;. This plugin adds some language constructs that allow us to filter tests by tag with:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;test &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    tags &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+        exclude &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.scalatest.tags.Slow&amp;#39;&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// whatever tags you want to exclude.&lt;/span&gt;
+    &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;So let&amp;rsquo;s get that working. First we add our plugin, and the dependencies we are told to add in &lt;a href=&#34;https://github.com/maiflai/gradle-scalatest#getting-started&#34;&gt;Getting Started&lt;/a&gt;&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;plugins &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    id &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;com.github.maiflai.scalatest&amp;quot;&lt;/span&gt; version &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;0.14&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+dependencies &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+  testCompile &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.scalatest:scalatest_2.10:3.0.0&amp;#39;&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// use the correct version of Scala here&lt;/span&gt;
+  testRuntime &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.pegdown:pegdown:1.6.0&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;I rubbed my hands together with excitement and fired up my Gradle build:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;gradle &lt;span style=&#34;color: #007020&#34;&gt;test&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;and received this disappointing output:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;:compileJava UP-TO-DATE
+:compileGroovy UP-TO-DATE
+:compileScala UP-TO-DATE
+:processResources UP-TO-DATE
+:classes UP-TO-DATE
+:jar
+:assemble
+:compileTestJava UP-TO-DATE
+:compileTestGroovy UP-TO-DATE
+:compileTestScala UP-TO-DATE
+:processTestResources
+:testClasses
+An exception or error caused a run to abort. This may have been caused by a problematic custom reporter.
+java.lang.IncompatibleClassChangeError: class org.objectweb.asm.tree.ClassNode has interface org.objectweb.asm.ClassVisitor as super class
+	at java.lang.ClassLoader.defineClass1&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;Native Method&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt;
+	at java.lang.ClassLoader.defineClass&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;ClassLoader.java:800&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt;
+  // rest of stack trace
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;going digging, I can see that the &lt;a href=&#34;https://github.com/sirthias/pegdown&#34;&gt;pegdown&lt;/a&gt; 0.12 onwards has a specific dependency on &lt;a href=&#34;http://asm.ow2.org/&#34;&gt;asm&lt;/a&gt; as noted in this &lt;a href=&#34;https://github.com/sirthias/pegdown/issues/66&#34;&gt;issue&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Adding this to our testRuntime dependencies:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;plugins &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    id &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;com.github.maiflai.scalatest&amp;quot;&lt;/span&gt; version &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;0.14&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+dependencies &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+  testCompile &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.scalatest:scalatest_2.10:3.0.0&amp;#39;&lt;/span&gt; &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// use the correct version of Scala here&lt;/span&gt;
+  testRuntime &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.ow2.asm:asm-all:4.2&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt;
+              &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;org.pegdown:pegdown:1.6.0&amp;#39;&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;now:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;gradle &lt;span style=&#34;color: #007020&#34;&gt;test&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;yields successful testing:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;:compileJava UP-TO-DATE
+:compileGroovy UP-TO-DATE
+:compileScala UP-TO-DATE
+:processResources UP-TO-DATE
+:classes UP-TO-DATE
+:compileTestJava UP-TO-DATE
+:compileTestGroovy UP-TO-DATE
+:compileTestScala
+:processTestResources
+:testClasses
+:test
+Discovery starting.
+
+// &lt;span style=&#34;color: #007020&#34;&gt;test&lt;/span&gt; output here
+
+Run completed in &lt;span style=&#34;color: #40a070&#34;&gt;10&lt;/span&gt; seconds, &lt;span style=&#34;color: #40a070&#34;&gt;793&lt;/span&gt; milliseconds.
+Total number of tests run: 131
+Suites: completed 22, aborted 0
+Tests: succeeded 131, failed 0, canceled 0, ignored 0, pending 0
+All tests passed.
+
+BUILD SUCCESSFUL
+
+Total time: 21.9 secs
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;whoop, we can now add our test filter by tag thanks to the maiflai plugin by adding this to our Gradle build definition:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// modify the default test to exclude integration tests, to allow a quick test run with no external dependencies&lt;/span&gt;
+tasks&lt;span style=&#34;color: #666666&#34;&gt;.&lt;/span&gt;&lt;span style=&#34;color: #4070a0&#34;&gt;withType&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;Test&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    tags &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+        exclude &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;quot;integration&amp;quot;&lt;/span&gt;
+    &lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+
+&lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// create a new test task that doesn&amp;#39;t exclude anything&lt;/span&gt;
+task &lt;span style=&#34;color: #06287e&#34;&gt;integrationTest&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;(&lt;/span&gt;&lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;dependsOn:&lt;/span&gt; testClasses&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;type:&lt;/span&gt; Test&lt;span style=&#34;color: #666666&#34;&gt;,&lt;/span&gt; &lt;span style=&#34;color: #002070; font-weight: bold&#34;&gt;group:&lt;/span&gt; &lt;span style=&#34;color: #4070a0&#34;&gt;&amp;#39;verification&amp;#39;&lt;/span&gt;&lt;span style=&#34;color: #666666&#34;&gt;)&lt;/span&gt; &lt;span style=&#34;color: #666666&#34;&gt;{&lt;/span&gt;
+    &lt;span style=&#34;color: #60a0b0; font-style: italic&#34;&gt;// don&amp;#39;t exclude anything&lt;/span&gt;
+&lt;span style=&#34;color: #666666&#34;&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Although this is another post entirely, my Drone build script looks like this:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34; style=&#34;background: #f0f0f0&#34;&gt;&lt;pre style=&#34;line-height: 125%&#34;&gt;&lt;span&gt;&lt;/span&gt;compose:
+  database:
+    image: cassandra:3.0
+
+build:
+  image: java:8
+  commands:
+    - ./gradlew assemble
+    - ./gradlew integrationTest
+
+// other stuff
+&lt;/pre&gt;&lt;/div&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
