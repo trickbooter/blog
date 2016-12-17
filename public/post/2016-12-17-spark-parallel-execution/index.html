@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+<meta name="pinterest" content="nopin">
+<meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+<meta name="generator" content="Hugo 0.17" />
+
+
+
+<link rel="canonical" href="https://trickbooter.github.io/post/2016-12-17-spark-parallel-execution/">
+
+
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link href="https://trickbooter.github.io/css/styles.css" rel="stylesheet">
+    <script src="//code.jquery.com/jquery-3.1.1.min.js"></script>
+    <title>Spark Parallel Job Execution - Outback Coder (a working title)</title>
+    
+<meta name="description" content="A pretty common use case for Spark is to run many jobs in parallel. Spark is excellent at running stages in parallel after constructing the job dag, but this doesn&amp;rsquo;t help us to run two entirely independent jobs in the same Spark applciation at the same time. Some of the use cases I can think of for parallel job execution include steps in an etl pipeline in which we are pulling data from several remote sources and landing them into our an hdfs cluster.">
+
+<meta property="og:title" content="Spark Parallel Job Execution - Outback Coder (a working title)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://trickbooter.github.io/post/2016-12-17-spark-parallel-execution/">
+<meta property="og:image" content="https://trickbooter.github.io/images/default.png">
+<meta property="og:site_name" content="Outback Coder (a working title)">
+<meta property="og:description" content="A pretty common use case for Spark is to run many jobs in parallel. Spark is excellent at running stages in parallel after constructing the job dag, but this doesn&amp;rsquo;t help us to run two entirely independent jobs in the same Spark applciation at the same time. Some of the use cases I can think of for parallel job execution include steps in an etl pipeline in which we are pulling data from several remote sources and landing them into our an hdfs cluster.">
+<meta property="og:locale" content="ja_JP">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="Outback Coder (a working title)">
+<meta name="twitter:url" content="https://trickbooter.github.io/post/2016-12-17-spark-parallel-execution/">
+<meta name="twitter:title" content="Spark Parallel Job Execution - Outback Coder (a working title)">
+<meta name="twitter:description" content="A pretty common use case for Spark is to run many jobs in parallel. Spark is excellent at running stages in parallel after constructing the job dag, but this doesn&amp;rsquo;t help us to run two entirely independent jobs in the same Spark applciation at the same time. Some of the use cases I can think of for parallel job execution include steps in an etl pipeline in which we are pulling data from several remote sources and landing them into our an hdfs cluster.">
+<meta name="twitter:image" content="https://trickbooter.github.io/images/default.png">
+
+
+<script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "NewsArticle",
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id":"https:\/\/trickbooter.github.io\/"
+    },
+    "headline": "Spark Parallel Job Execution - Outback Coder (a working title)",
+    "image": {
+      "@type": "ImageObject",
+      "url": "https:\/\/trickbooter.github.io\/images\/default.png",
+      "height": 800,
+      "width": 800
+    },
+    "datePublished": "2016-12-17T16:04:45JST",
+    "dateModified": "2016-12-17T16:04:45JST",
+    "author": {
+      "@type": "Person",
+      "name": "Outback Coder (a working title)"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Outback Coder (a working title)",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https:\/\/trickbooter.github.io\/images/logo.png",
+        "width": 600,
+        "height": 60
+      }
+    },
+    "description": "A pretty common use case for Spark is to run many jobs in parallel. Spark is excellent at running stages in parallel after constructing the job dag, but this doesn\x26rsquo;t help us to run two entirely independent jobs in the same Spark applciation at the same time. Some of the use cases I can think of for parallel job execution include steps in an etl pipeline in which we are pulling data from several remote sources and landing them into our an hdfs cluster."
+  }
+</script>
+
+
+  </head>
+
+  <body>
+    
+    
+    
+
+    <header class="l-header">
+      <nav class="navbar navbar-default">
+        <div class="container">
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
+              <span class="sr-only">Toggle navigation</span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="https://trickbooter.github.io/">Outback Coder (a working title)</a>
+
+            
+              <a class="navbar-brand" href="https://github.com/trickbooter">
+                <span class="icon">
+                  <i class="fa fa-github"></i>
+                </span>
+              </a>
+            
+              <a class="navbar-brand" href="https://au.linkedin.com/in/trickbooter">
+                <span class="icon">
+                  <i class="fa fa-linkedin"></i>
+                </span>
+              </a>
+            
+              <a class="navbar-brand" href="/index.xml">
+                <span class="icon">
+                  <i class="fa fa-rss"></i>
+                </span>
+              </a>
+            
+          </div>
+
+          
+
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <div class="container">
+        
+<div class="row">
+  <div class="col-md-8">
+
+    <nav class="p-crumb">
+      <ol class="breadcrumb">
+        <li><a href="https://trickbooter.github.io/"><i class="fa fa-home" aria-hidden="true"></i></a></li>
+        
+        <li itemscope="" itemtype="http://data-vocabulary.org/Breadcrumb"><a href="https://trickbooter.github.io/post/" itemprop="url"><span itemprop="title">post</span></a></li>
+        
+        <li class="active">Spark Parallel Job Execution</li>
+      </ol>
+    </nav>
+
+    <article class="single">
+  <header>
+    <ul class="p-facts">
+      <li><i class="fa fa-calendar" aria-hidden="true"></i><time datetime="2016-12-17T16:04:45JST">Dec 17, 2016</time></li>
+      <li><i class="fa fa-bookmark" aria-hidden="true"></i><a href="https://trickbooter.github.io/post/">post</a></li>
+      
+    </ul>
+
+    <h1 class="title">Spark Parallel Job Execution</h1>
+  </header>
+
+  
+
+  <div class="article-body">
+
+<p>A pretty common use case for <a href="http://spark.apache.org/">Spark</a> is to run many jobs in parallel. Spark is excellent at running stages in parallel after constructing the job dag, but this doesn&rsquo;t help us to run two entirely independent jobs in the same <a href="http://spark.apache.org/">Spark</a> applciation at the same time. Some of the use cases I can think of for parallel job execution include steps in an etl pipeline in which we are pulling data from several remote sources and landing them into our an hdfs cluster.</p>
+
+<h3 id="threading-and-thread-safety">Threading and Thread Safety</h3>
+
+<p>Every spark application needs a spark session (context) to configure and execute actions. The SparkSession object is thread safe and can be passed around your spark application as you see fit.</p>
+
+<h3 id="a-sequential-example">A Sequential Example</h3>
+
+<p>Consider a spark 2.x application with a couple of functions that write data to hdfs.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">org.apache.spark.sql.SparkSession</span>
+
+<span style="color: #007020; font-weight: bold">object</span> <span style="color: #0e84b5; font-weight: bold">FancyApp</span> <span style="color: #666666">{</span>
+  <span style="color: #007020; font-weight: bold">def</span> <span style="color: #007020; font-weight: bold">def</span> appMain<span style="color: #666666">(</span>args<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">Array</span><span style="color: #666666">[</span><span style="color: #902000">String</span><span style="color: #666666">])</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #666666">{</span>
+    <span style="color: #60a0b0; font-style: italic">// configure spark</span>
+    <span style="color: #007020; font-weight: bold">val</span> spark <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">SparkSession</span>
+        <span style="color: #666666">.</span>builder
+        <span style="color: #666666">.</span>appName<span style="color: #666666">(</span><span style="color: #4070a0">&quot;parjobs&quot;</span><span style="color: #666666">)</span>
+        <span style="color: #666666">.</span>getOrCreate<span style="color: #666666">()</span>
+
+    <span style="color: #007020; font-weight: bold">val</span> df <span style="color: #007020; font-weight: bold">=</span> spark<span style="color: #666666">.</span>sparkContext<span style="color: #666666">.</span>parallelize<span style="color: #666666">(</span><span style="color: #40a070">1</span> to <span style="color: #40a070">100</span><span style="color: #666666">).</span>toDF
+    doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///dis.parquet&quot;</span><span style="color: #666666">)</span>
+    doFancySum<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///sum.parquet&quot;</span><span style="color: #666666">)</span>
+  <span style="color: #666666">}</span>
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> df<span style="color: #666666">.</span>distinct<span style="color: #666666">.</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span>
+
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancySum<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> df<span style="color: #666666">.</span>agg<span style="color: #666666">(</span>sum<span style="color: #666666">(</span><span style="color: #4070a0">&quot;value&quot;</span><span style="color: #666666">)).</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span>
+
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>That&rsquo;s all well and good, but spark will execute the two actions sequentially which isn&rsquo;t necessary for these two independent actions. We can do better.</p>
+
+<h3 id="a-bad-sequential-example">A Bad Sequential Example</h3>
+
+<p>A quick google for &lsquo;scala asynchronous programming&rsquo; will quickly lead you to example for scala futures. If you wade in following some online examples you might end up with something that looks like the following&hellip;</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">org.apache.spark.sql.SparkSession</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent._</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent.duration._</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent.ExecutionContext.Implicits.global</span>
+
+<span style="color: #007020; font-weight: bold">object</span> <span style="color: #0e84b5; font-weight: bold">FancyApp</span> <span style="color: #666666">{</span>
+  <span style="color: #007020; font-weight: bold">def</span> <span style="color: #007020; font-weight: bold">def</span> appMain<span style="color: #666666">(</span>args<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">Array</span><span style="color: #666666">[</span><span style="color: #902000">String</span><span style="color: #666666">])</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #666666">{</span>
+    <span style="color: #60a0b0; font-style: italic">// configure spark</span>
+    <span style="color: #007020; font-weight: bold">val</span> spark <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">SparkSession</span>
+        <span style="color: #666666">.</span>builder
+        <span style="color: #666666">.</span>appName<span style="color: #666666">(</span><span style="color: #4070a0">&quot;parjobs&quot;</span><span style="color: #666666">)</span>
+        <span style="color: #666666">.</span>getOrCreate<span style="color: #666666">()</span>
+
+    <span style="color: #007020; font-weight: bold">val</span> df <span style="color: #007020; font-weight: bold">=</span> spark<span style="color: #666666">.</span>sparkContext<span style="color: #666666">.</span>parallelize<span style="color: #666666">(</span><span style="color: #40a070">1</span> to <span style="color: #40a070">100</span><span style="color: #666666">).</span>toDF
+    <span style="color: #007020; font-weight: bold">val</span> taskA <span style="color: #007020; font-weight: bold">=</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///dis.parquet&quot;</span><span style="color: #666666">)</span>
+    <span style="color: #007020; font-weight: bold">val</span> taskB <span style="color: #007020; font-weight: bold">=</span> doFancySum<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///sum.parquet&quot;</span><span style="color: #666666">)</span>
+    <span style="color: #60a0b0; font-style: italic">// Now wait for the tasks to finish before exiting the app</span>
+    <span style="color: #0e84b5; font-weight: bold">Await</span><span style="color: #666666">.</span>result<span style="color: #666666">(</span><span style="color: #0e84b5; font-weight: bold">Future</span><span style="color: #666666">.</span>sequence<span style="color: #666666">(</span><span style="color: #0e84b5; font-weight: bold">Seq</span><span style="color: #666666">(</span>taskA<span style="color: #666666">,</span>taskB<span style="color: #666666">)),</span> <span style="color: #0e84b5; font-weight: bold">Duration</span><span style="color: #666666">(</span><span style="color: #40a070">1</span><span style="color: #666666">,</span> <span style="color: #0e84b5; font-weight: bold">MINUTES</span><span style="color: #666666">))</span>
+  <span style="color: #666666">}</span>
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Future</span> <span style="color: #666666">{</span> df<span style="color: #666666">.</span>distinct<span style="color: #666666">.</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span> <span style="color: #666666">}</span>
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancySum<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Future</span> <span style="color: #666666">{</span> df<span style="color: #666666">.</span>agg<span style="color: #666666">(</span>sum<span style="color: #666666">(</span><span style="color: #4070a0">&quot;value&quot;</span><span style="color: #666666">)).</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span> <span style="color: #666666">}</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>The ExecutionContext is a context for managing parallel operations. The actual threading model can be explicitly provided by the programmer, or a global default is used (which is a ForkJoinPool) as we have done here with the following line&hellip;</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent.ExecutionContext.Implicits.global</span>
+</pre></div>
+
+<p>The trouble with the global execution context is that it has no idea that you are launching spark jobs on a cluster. By default the global execution context provides the same number of threads as processors in the system running the code. In the case of our spark application, that&rsquo;ll be the spark driver. We can do better than this.</p>
+
+<h3 id="a-better-sequential-example">A Better Sequential Example</h3>
+
+<p>We need to take control of our threading strategy, and we need to write our functions more generally, such that they can be re-used with different threading models in mind.</p>
+
+<p>Let&rsquo;s start by rewriting our functions to allow fine grained control over exactly which execution context will manage the threading for a particular function call. This addition of this implicit parameter allows they calling code to specify exactly which ExecutionContext should be used when running the function.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #007020; font-weight: bold">def</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)(</span><span style="color: #007020; font-weight: bold">implicit</span> xc<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">ExecutionContext</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Future</span> <span style="color: #666666">{</span>
+  df<span style="color: #666666">.</span>distinct<span style="color: #666666">.</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>Now let&rsquo;s come up with a better strategy than the default global execution context. We want to be able to define exactly what we want our parllelism will be.</p>
+<div class="highlight" style="background: #f0f0f0"><pre style="line-height: 125%"><span></span><span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">org.apache.spark.sql.SparkSession</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">import</span> java<span style="color: #666666">.</span>util<span style="color: #666666">.</span>concurrent<span style="color: #666666">.</span><span style="color: #0e84b5; font-weight: bold">Executors</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent._</span>
+<span style="color: #007020; font-weight: bold">import</span> <span style="color: #0e84b5; font-weight: bold">scala.concurrent.duration._</span>
+
+<span style="color: #007020; font-weight: bold">object</span> <span style="color: #0e84b5; font-weight: bold">FancyApp</span> <span style="color: #666666">{</span>
+  <span style="color: #007020; font-weight: bold">def</span> <span style="color: #007020; font-weight: bold">def</span> appMain<span style="color: #666666">(</span>args<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">Array</span><span style="color: #666666">[</span><span style="color: #902000">String</span><span style="color: #666666">])</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #666666">{</span>
+    <span style="color: #60a0b0; font-style: italic">// configure spark</span>
+    <span style="color: #007020; font-weight: bold">val</span> spark <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">SparkSession</span>
+        <span style="color: #666666">.</span>builder
+        <span style="color: #666666">.</span>appName<span style="color: #666666">(</span><span style="color: #4070a0">&quot;parjobs&quot;</span><span style="color: #666666">)</span>
+        <span style="color: #666666">.</span>getOrCreate<span style="color: #666666">()</span>
+
+    <span style="color: #60a0b0; font-style: italic">// Set number of threads via a configuration property</span>
+    <span style="color: #007020; font-weight: bold">val</span> pool <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Executors</span><span style="color: #666666">.</span>newFixedThreadPool<span style="color: #666666">(</span><span style="color: #40a070">5</span><span style="color: #666666">)</span>
+    <span style="color: #60a0b0; font-style: italic">// create the implicit ExecutionContext based on our thread pool</span>
+    <span style="color: #007020; font-weight: bold">implicit</span> <span style="color: #007020; font-weight: bold">val</span> xc <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">ExecutionContext</span><span style="color: #666666">.</span>fromExecutorService<span style="color: #666666">(</span>pool<span style="color: #666666">)</span>
+    <span style="color: #007020; font-weight: bold">val</span> df <span style="color: #007020; font-weight: bold">=</span> spark<span style="color: #666666">.</span>sparkContext<span style="color: #666666">.</span>parallelize<span style="color: #666666">(</span><span style="color: #40a070">1</span> to <span style="color: #40a070">100</span><span style="color: #666666">).</span>toDF
+    <span style="color: #007020; font-weight: bold">val</span> taskA <span style="color: #007020; font-weight: bold">=</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///dis.parquet&quot;</span><span style="color: #666666">)</span>
+    <span style="color: #007020; font-weight: bold">val</span> taskB <span style="color: #007020; font-weight: bold">=</span> doFancySum<span style="color: #666666">(</span>df<span style="color: #666666">,</span> <span style="color: #4070a0">&quot;hdfs:///sum.parquet&quot;</span><span style="color: #666666">)</span>
+    <span style="color: #60a0b0; font-style: italic">// Now wait for the tasks to finish before exiting the app</span>
+    <span style="color: #0e84b5; font-weight: bold">Await</span><span style="color: #666666">.</span>result<span style="color: #666666">(</span><span style="color: #0e84b5; font-weight: bold">Future</span><span style="color: #666666">.</span>sequence<span style="color: #666666">(</span><span style="color: #0e84b5; font-weight: bold">Seq</span><span style="color: #666666">(</span>taskA<span style="color: #666666">,</span>taskB<span style="color: #666666">)),</span> <span style="color: #0e84b5; font-weight: bold">Duration</span><span style="color: #666666">(</span><span style="color: #40a070">1</span><span style="color: #666666">,</span> <span style="color: #0e84b5; font-weight: bold">MINUTES</span><span style="color: #666666">))</span>
+  <span style="color: #666666">}</span>
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancyDistinct<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)(</span><span style="color: #007020; font-weight: bold">implicit</span> xc<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">ExecutionContext</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Future</span> <span style="color: #666666">{</span>
+    df<span style="color: #666666">.</span>distinct<span style="color: #666666">.</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span>
+  <span style="color: #666666">}</span>
+
+  <span style="color: #007020; font-weight: bold">def</span> doFancySum<span style="color: #666666">(</span>df<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">DataFrame</span><span style="color: #666666">,</span> outPath<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">String</span><span style="color: #666666">)(</span><span style="color: #007020; font-weight: bold">implicit</span> xc<span style="color: #007020; font-weight: bold">:</span> <span style="color: #902000">ExecutionContext</span><span style="color: #666666">)</span> <span style="color: #007020; font-weight: bold">=</span> <span style="color: #0e84b5; font-weight: bold">Future</span> <span style="color: #666666">{</span>
+    df<span style="color: #666666">.</span>agg<span style="color: #666666">(</span>sum<span style="color: #666666">(</span><span style="color: #4070a0">&quot;value&quot;</span><span style="color: #666666">)).</span>write<span style="color: #666666">.</span>parquet<span style="color: #666666">(</span>outPath<span style="color: #666666">)</span> 
+  <span style="color: #666666">}</span>
+<span style="color: #666666">}</span>
+</pre></div>
+
+<p>The nature of scala implicits will mean that our fancy functions will be called from the appMain entrypoint using the in-scope execution context xc.</p>
+</div>
+
+  <footer class="article-footer">
+    
+    
+    
+    <section class="bordered">
+      <header>
+        <div class="panel-title">CATEGORIES</div>
+      </header>
+      <div>
+        <ul class="p-terms">
+          
+          <li><a href="https://trickbooter.github.io/categories/development/">Development</a></li>
+          
+          <li><a href="https://trickbooter.github.io/categories/spark/">Spark</a></li>
+          
+        </ul>
+      </div>
+    </section>
+    
+    
+    
+    <section class="bordered">
+      <header>
+        <div class="panel-title">TAGS</div>
+      </header>
+      <div>
+        <ul class="p-terms">
+          
+          <li><a href="https://trickbooter.github.io/tags/development/">Development</a></li>
+          
+          <li><a href="https://trickbooter.github.io/tags/spark/">Spark</a></li>
+          
+        </ul>
+      </div>
+    </section>
+    
+    
+  </footer>
+
+</article>
+
+
+    
+  </div>
+
+  <div class="col-md-4">
+    
+<aside class="l-sidebar">
+
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">LATESTS</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/post/2016-12-17-spark-parallel-execution/" class="list-group-item">Spark Parallel Job Execution</a>
+      
+      <a href="https://trickbooter.github.io/post/2016-11-17-gradle-scalatest/" class="list-group-item">Ignoring Scalatest Tests By Tag When Using JUnit Runner and Gradle</a>
+      
+      <a href="https://trickbooter.github.io/post/2016-11-12-spark-gradle/" class="list-group-item">A Spark Gradle Project</a>
+      
+    </div>
+  </section>
+
+  
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">CATEGORY</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/categories/development" class="list-group-item">development</a>
+      
+      <a href="https://trickbooter.github.io/categories/spark" class="list-group-item">spark</a>
+      
+      <a href="https://trickbooter.github.io/categories/tooling" class="list-group-item">tooling</a>
+      
+    </div>
+  </section>
+  
+  <section class="panel panel-default">
+    <div class="panel-heading">
+      <div class="panel-title">TAG</div>
+    </div>
+    <div class="list-group">
+      
+      <a href="https://trickbooter.github.io/tags/development" class="list-group-item">development</a>
+      
+      <a href="https://trickbooter.github.io/tags/gradle" class="list-group-item">gradle</a>
+      
+      <a href="https://trickbooter.github.io/tags/spark" class="list-group-item">spark</a>
+      
+    </div>
+  </section>
+  
+
+</aside>
+
+
+  </div>
+</div>
+
+      </div>
+    </main>
+
+    <footer class="l-footer">
+      <div class="container">
+        <p><span class="h-logo">&copy; Outback Coder (a working title)</span></p>
+        <aside>
+          <p>Powered by <a href="https://gohugo.io/">Hugo</a>.</p>
+          <p><a href="https://github.com/dim0627/hugo_theme_beg">Beg</a> designed by <a href="http://yet.unresolved.xyz/">Daisuke Tsuji</a>.</p>
+        </aside>
+      </div>
+    </footer>
+  </body>
+</html>
