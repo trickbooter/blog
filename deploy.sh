@@ -14,9 +14,9 @@ if [ $# -eq 1 ]
   then msg="$1"
 fi
 git commit -m "$msg"
-
-echo -e "\033[0;32mDeploying updates to GitHub...\033[0m"
+git push origin develop
 
 # Push source and build repos.
-git push origin develop
+echo -e "\033[0;32mDeploying updates to GitHub...\033[0m"
+cp CNAME public/
 git -C public add --all && git -C public commit -m "$msg" && git -C push
