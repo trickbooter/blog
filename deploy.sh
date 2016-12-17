@@ -17,5 +17,4 @@ git commit -m "$msg"
 
 # Push source and build repos.
 git push origin develop
-git -C public pull origin master --allow-unrelated-histories
-git subtree push --prefix=public origin master
+git -C public add --all && git -C public commit -m "$msg" && git -C push
